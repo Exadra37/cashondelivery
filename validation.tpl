@@ -49,7 +49,7 @@
 	<p>
 		<br /><br />
 		<br /><br />
-		<b>{l s='Please confirm your order by clicking \'I confirm my order\'' mod='cashondelivery'}.</b>
+		<b>{l s='Por favor confirme su orden pulsando en  \'CONFIRMAR ORDEN\'' mod='cashondelivery'}.</b>
 	</p>
 	<p class="cart_navigation">
 		<a href="{$link->getPageLink('order', true, NULL, "step=3")}" class="button_large">{l s='Other payment methods' mod='cashondelivery'}</a>

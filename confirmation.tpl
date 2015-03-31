@@ -26,7 +26,7 @@
 
 <p>{l s='Your order on' mod='cashondelivery'} <span class="bold">{$shop_name}</span> {l s='is complete.' mod='cashondelivery'}
 	<br /><br />
-	{l s='You have chosen the cash on delivery method.' mod='cashondelivery'}
-	<br /><br /><span class="bold">{l s='Your order will be sent very soon.' mod='cashondelivery'}</span>
-	<br /><br />{l s='For any questions or for further information, please contact our' mod='cashondelivery'} <a href="{$link->getPageLink('contact', true)}">{l s='customer support' mod='cashondelivery'}</a>.
+	{l s='Has escogido el pago contrareembolso.' mod='cashondelivery'}
+	<br /><br /><span class="bold">{l s='En breve recibirás tu pedido en la dirección indicada.' mod='cashondelivery'}</span>
+	<br /><br />{l s='Para cualquier duda o consulta, puede usar la sección de ' mod='cashondelivery'} <a href="{$link->getPageLink('contact', true)}">{l s='contacto' mod='cashondelivery'}</a>.
 </p>
