@@ -70,18 +70,13 @@ class CashOnDelivery extends PaymentModule
         $this->fee = $config['COD_FEE'];
         $this->feefree = $config['COD_FEEFREE'];
         
-        parent::__construct();
-
-        
         if (!empty($config['COD_CARRIERS'])) {
 
             $this->allowed_carriers = unserialize($config['COD_CARRIERS']);
         }
         
-        
         parent::__construct();
 
-        
         $this->displayName = $this->l('Cash on delivery (COD)');
         $this->description = $this->l('Accept cash on delivery payments');
     }
