@@ -1,6 +1,6 @@
 <?php
 /*
-* 2007-2014 PrestaShop
+* 2007-2012 PrestaShop
 *
 * NOTICE OF LICENSE
 *
@@ -19,7 +19,8 @@
 * needs please refer to http://www.prestashop.com for more information.
 *
 *  @author PrestaShop SA <contact@prestashop.com>
-*  @copyright  2007-2014 PrestaShop SA
+*  @copyright  2007-2012 PrestaShop SA
+*  @version  Release: $Revision: 15094 $
 *  @license    http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
 *  International Registered Trademark & Property of PrestaShop SA
 */
@@ -27,54 +28,55 @@
 /**
  * @since 1.5.0
  */
-class CashondeliveryValidationModuleFrontController extends ModuleFrontController
-{
-	public $ssl = true;
-	public $display_column_left = false;
+class CashondeliveryValidationModuleFrontController extends ModuleFrontController{
+public $display_column_left = false;
+public $ssl = true;
 
-	public function postProcess()
-	{
-		if ($this->context->cart->id_customer == 0 || $this->context->cart->id_address_delivery == 0 || $this->context->cart->id_address_invoice == 0 || !$this->module->active)
-			Tools::redirectLink(__PS_BASE_URI__.'order.php?step=1');
+public function postProcess(){
+if ($this->context->cart->id_customer == 0 || $this->context->cart->id_address_delivery == 0 || $this->context->cart->id_address_invoice == 0 || !$this->module->active)
+Tools::redirectLink(__PS_BASE_URI__.'order.php?step=1');
 
-		// Check that this payment option is still available in case the customer changed his address just before the end of the checkout process
-		$authorized = false;
-		foreach (Module::getPaymentModules() as $module)
-			if ($module['name'] == 'cashondelivery')
-			{
-				$authorized = true;
-				break;
-			}
-		if (!$authorized)
-			die(Tools::displayError('This payment method is not available.'));
+// Check that this payment option is still available in case the customer changed his address just before the end of the checkout process
+$authorized = false;
+foreach (Module::getPaymentModules() as $module)
+if ($module['name'] == 'cashondelivery'){
+$authorized = true;
+break;}
+if(!$authorized)
+die(Tools::displayError('This payment method is not available.'));
 
-		$customer = new Customer($this->context->cart->id_customer);
-		if (!Validate::isLoadedObject($customer))
-			Tools::redirectLink(__PS_BASE_URI__.'order.php?step=1');
+$customer = new Customer($this->context->cart->id_customer);
+if (!Validate::isLoadedObject($customer))
+Tools::redirectLink(__PS_BASE_URI__.'order.php?step=1');
 
-		if (Tools::getValue('confirm'))
-		{
-			$customer = new Customer((int)$this->context->cart->id_customer);
-			$total = $this->context->cart->getOrderTotal(true, Cart::BOTH);
-			$this->module->validateOrder((int)$this->context->cart->id, Configuration::get('PS_OS_PREPARATION'), $total, $this->module->displayName, null, array(), null, false, $customer->secure_key);
-			Tools::redirectLink(__PS_BASE_URI__.'order-confirmation.php?key='.$customer->secure_key.'&id_cart='.(int)$this->context->cart->id.'&id_module='.(int)$this->module->id.'&id_order='.(int)$this->module->currentOrder);
-		}
-	}
+if (Tools::getValue('confirm')){
+$customer = new Customer((int)$this->context->cart->id_customer);
+$total = $this->context->cart->getOrderTotal(true, Cart::BOTH)+$this->getDobirecne();
+$this->module->validateOrder((int)$this->context->cart->id, Configuration::get('PS_OS_PREPARATION'), $total, $this->module->displayName, null, array(), null, false, $customer->secure_key);
+Tools::redirectLink(__PS_BASE_URI__.'order-confirmation.php?key='.$customer->secure_key.'&id_cart='.(int)$this->context->cart->id.'&id_module='.(int)$this->module->id.'&id_order='.(int)$this->module->currentOrder);}}
+/**
+* @see FrontController::initContent()
+*/
+public function initContent(){
+parent::initContent();
+$dobirecne= $this->getDobirecne();
+$total=$this->context->cart->getOrderTotal(true, Cart::BOTH);
+$this->context->smarty->assign(array(
+'totalbezdobirky' => $total,
+'dobirecne' => $dobirecne,
+'total'=>$total + $dobirecne,
+'this_path' => $this->module->getPathUri(),
+'this_path_ssl' => Tools::getShopDomainSsl(true, true).__PS_BASE_URI__.'modules/'.$this->module->name.'/'));
 
-	/**
-	 * @see FrontController::initContent()
-	 */
-	public function initContent()
-	{
-		parent::initContent();
+$this->setTemplate('validation.tpl');}
 
-		$this->context->smarty->assign(array(
-			'total' => $this->context->cart->getOrderTotal(true, Cart::BOTH),
-			'this_path' => $this->module->getPathUri(),//keep for retro compat
-			'this_path_cod' => $this->module->getPathUri(),
-			'this_path_ssl' => Tools::getShopDomainSsl(true, true).__PS_BASE_URI__.'modules/'.$this->module->name.'/'
-		));
+private function getDobirecne(){
+require 'modules/cashondelivery/recargominimo.php';
+$dobirecne = intval(Configuration::get('COD_FEE'));
+$dobirecne = $this->context->cart->getOrderTotal(true,Cart::BOTH)/100*$dobirecne;
+if($dobirecne>$this->context->cart->getOrderTotal(true,Cart::BOTH)){$dobirecne = intval(Configuration::get('COD_FEE'))/100;}
+if ($dobirecne<$RecargoMinimo){$dobirecne=$RecargoMinimo;}
+$zdarma = intval(Configuration::get('COD_FEEFREE')); 
 
-		$this->setTemplate('validation.tpl');
-	}
-}
+if($zdarma > 0 && $this->context->cart->getOrderTotal(true,Cart::BOTH_WITHOUT_SHIPPING) >$zdarma)$dobirecne=0;
+return $dobirecne;}}?>
