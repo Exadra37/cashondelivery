@@ -31,6 +31,19 @@
  * allows carrier selection
  */
 
+/**
+ * This is a fork from the work made available public by Prestashop member @zantos in topic  https://www.prestashop.com/forums/topic/75458-module-cash-on-delivery-cod-v05-with-fixed-and-percentage-fees/
+ *
+ * Initial code downloaded from @maximo88 post in https://www.prestashop.com/forums/topic/75458-module-cash-on-delivery-cod-v05-with-fixed-and-percentage-fees/page-7#entry1936755
+ *  and have also applied the changes made by @sergiocues in post https://www.prestashop.com/forums/topic/75458-module-cash-on-delivery-cod-v05-with-fixed-and-percentage-fees/page-7#entry1979224
+ * 
+ * @author  Exadra37 <exadra37ingmailpointcom>
+ * @package Exadra37/cashondelivery
+ * @since   2015/03/31
+ * @link    http://exadra37.com
+ * 
+ */
+
 if (!defined('_PS_VERSION_')) exit;
 
 
@@ -44,7 +57,7 @@ class CashOnDelivery extends PaymentModule
         $this->name = 'cashondelivery';
         $this->tab = 'payments_gateways';
         $this->version = '1.3';
-        $this->author = 'Modified';
+        $this->author = 'Community';
         $this->need_instance = 1;
         
         $this->currencies = false;
