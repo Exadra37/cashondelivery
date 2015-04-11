@@ -491,9 +491,7 @@ class CashOnDelivery extends PaymentModule
                     }
                     
                     // Optional message to attach to this order
-                    // TODO: fix use of isset() and empty() simultaneously
-                    //       fix use of single & instead of &&
-                    if (isset($message) & !empty($message)) {
+                    if (!empty($message)) {
 
                         $msg     = new Message();
                         $message = strip_tags($message, '<br>');
