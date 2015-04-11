@@ -56,6 +56,8 @@ class CashOnDelivery extends PaymentModule
 
     private $feefree;
 
+    private $_postErrors = array();
+
     protected $allowed_carriers;
     
     public function __construct()
@@ -924,43 +926,14 @@ class CashOnDelivery extends PaymentModule
         ///////////////////////////////////////////////////////////////////////////////*/
         $archivo = "../modules/cashondelivery/recargominimo.php";
 
-        // TODO: str_replace supports multiple replaces, therefore pointless to do this twice
-        $valor   = str_replace(",", ".", $_POST["minimo"]);
-        $valor   = str_replace("'", ".", $valor);
-        
-        // TODO: Pointless to assign this to an array if this seems to not be retrieved as an array and is final value will be a numeric var
-        $valor   = array(
-            $valor
-        );
-        
-        /*///ASEGURAMOS QUE SEA UN VALOR NUMÉRICO///*/
-        // TODO: pointless to have this foreach as per above TODO comment
-        foreach ($valor as $element) {
-            
-            if (is_numeric($element)) {
-
-                $valor = $element;
-
-            } else {
-
-                $valor = 0;
-            }
-        }
+        $valor = str_replace(array(",", "'"), ".", (float) Tools::getValue('minimo', 0));
         
         /*///// ARCHIVO A CREAR /////*/
         // TODO: use instead ps_configuration to store this value
         $contenido = '<?php $RecargoMinimo = ' . $valor . ';?>';
         
-        /*/// ASEGURAMOS QUE SOLO SE CREA EL ARCHIVO SI SE ENVIA EL FORMULARIO ///*/
-        // TODO: something is wrong here, once this post key is used above to retrieve a non boolean value... how can it be true and a non boolean at same time???
-        // TODO: use instead ps_configuration to store this value
-        // TODO: comparisons against bolean values must be done using === not just ==
-        if ($_POST["minimo"] == true) {
-
-            $fch = fopen($archivo, 'w');
-            fwrite($fch, $contenido);
-            fclose($fch);
-        }
+        // TODO: this will be temporary... just until i resolve issue #6
+        file_put_contents($archivo, $contenido);
         
         /*///////////////////////////////////////////////////////////////////////////////
         ///////////////////// CREACIÓN DEL ARCHIVO RECARGOMINIMO.PHP ////////////////////
@@ -1041,7 +1014,7 @@ class CashOnDelivery extends PaymentModule
     protected function fetchCarriers($selected)
     {
         $retval   = '';
-        $id_lang  = Configuration::get(PS_LANG_DEFAULT);
+        $id_lang  = Configuration::get('PS_LANG_DEFAULT');
         $carriers = Carrier::getCarriers($id_lang, true);
         
         // TODO: build this html in a tpl file and retrieve it using cache
