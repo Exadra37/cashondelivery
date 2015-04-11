@@ -133,7 +133,7 @@ class CashOnDelivery extends PaymentModule
     }
     
     public function hookPayment($params)
-    {      
+    {  
         if (!$this->active) {
 
             return;
@@ -143,7 +143,6 @@ class CashOnDelivery extends PaymentModule
 
             return false;
         }
-
         // TODO: remove the use of global
         global $smarty;
 
@@ -1036,18 +1035,7 @@ class CashOnDelivery extends PaymentModule
     // TODO: optimize this function to have the logic in 1 line
     protected function isAllowedCarrier($id_carrier)
     {
-        // No restriction if allowed_carriers is empty
-        if (!is_array($this->allowed_carriers) || !count($this->allowed_carriers)) {
-
-            return true;
-        }
-        
-        if (in_array($id_carrier, $this->allowed_carriers)) {
-
-            return true;
-        }
-
-        return false;
+        return is_array($this->allowed_carriers) && in_array($id_carrier, $this->allowed_carriers);
     }
     
     protected function fetchCarriers($selected)
