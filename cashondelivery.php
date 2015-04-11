@@ -98,15 +98,9 @@ class CashOnDelivery extends PaymentModule
         return true;
     }
 
-    // TODO: refracting this code to only 1 line
-    public function uninstall() 
+    public function uninstall()
     {
-        if (!Configuration::deleteByName('COD_FEE') || !Configuration::deleteByName('COD_FEEFREE') || !Configuration::deleteByName('COD_CARRIERS') || !parent::uninstall())
-        {
-            return false;
-        }
-    
-        return true;
+        return Configuration::deleteByName('COD_FEE') && Configuration::deleteByName('COD_FEEFREE') && Configuration::deleteByName('COD_CARRIERS') && parent::uninstall();
     }
     
     public function getContent()
