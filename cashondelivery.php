@@ -89,7 +89,12 @@ class CashOnDelivery extends PaymentModule
     
     public function install()
     {
-        return parent::install() && $this->registerHook('payment') && $this->registerHook('paymentReturn');
+        return parent::install() && 
+               $this->registerHook('payment') && 
+               $this->registerHook('paymentReturn') &&
+               Configuration::updateValue('COD_FEE', 0) &&
+               Configuration::updateValue('COD_FEEFREE', 0) &&
+               Configuration::updateValue('COD_ORDER_CARRIERS', '');
     }
 
     public function uninstall()
