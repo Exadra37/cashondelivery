@@ -567,7 +567,7 @@ class CashOnDelivery extends PaymentModule
                         if (!$product['is_virtual']) {
 
                             // TODO: do not makes any sense for me to use a bitwise operator with a bolean value
-                            $virtual_product &= false;
+                            $virtual_product = false;
                         }
 
                     } // end foreach ($products)
