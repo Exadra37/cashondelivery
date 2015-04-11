@@ -87,15 +87,9 @@ class CashOnDelivery extends PaymentModule
         $this->description = $this->l('Accept cash on delivery payments');
     }
     
-    // TODO: refracting this code to only 1 line
-    public function install() 
+    public function install()
     {
-        if(!parent::install() OR !$this->registerHook('payment') OR !$this->registerHook('paymentReturn')) {
-
-            return false;
-        }
-
-        return true;
+        return parent::install() && $this->registerHook('payment') && $this->registerHook('paymentReturn');
     }
 
     public function uninstall()
