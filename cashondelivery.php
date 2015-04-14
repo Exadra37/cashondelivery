@@ -78,6 +78,7 @@ class CashOnDelivery extends PaymentModule
         $this->author        = 'Community';
         $this->need_instance = 1;
         $this->currencies    = false;
+        $this->bootstrap     = true;
         
         $config = Configuration::getMultiple(array(
             'COD_CARRIERS',
