@@ -932,9 +932,9 @@ class CashOnDelivery extends PaymentModule
                 $this->__postErrors[] = $this->l("The value provide is not correct for field: Free From");
             }
 
-            if (!$this->__assignIfIsValidCarrier($this->__postValues['COD_CARRIERS'], 'COD_CARRIERS')) {
+            if (empty($this->__postValues['COD_CARRIERS']) || !$this->__assignIfIsValidCarrier($this->__postValues['COD_CARRIERS'], 'COD_CARRIERS')) {
                 
-                $this->__postErrors[] = $this->l("The value provide is not correct for field: carriers");
+                $this->__postErrors[] = $this->l("You must select at least one carrier or the selected carriers have invalid values.");
             }
 
             $this->__isFormSubmmitted = true;
@@ -1022,13 +1022,7 @@ class CashOnDelivery extends PaymentModule
                 $this->_allowedCarriers = $this->__validCarriers;
 
                 Configuration::updateValue('COD_CARRIERS', serialize($this->__validCarriers));
-
-            } else {
-
-                $this->_allowedCarriers = array();
-
-                Configuration::updateValue('COD_CARRIERS', null);
-            }
+            } 
             
             $this->_html .=  $this->displayConfirmation($this->l("Saved Successfully"));
         }
