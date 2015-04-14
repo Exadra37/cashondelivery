@@ -26,57 +26,119 @@
 */
 
 /**
+ * This is a fork from the work made available public by Prestashop member @zantos in topic  https://www.prestashop.com/forums/topic/75458-module-cash-on-delivery-cod-v05-with-fixed-and-percentage-fees/
+ *
+ * Initial code downloaded from @maximo88 post in https://www.prestashop.com/forums/topic/75458-module-cash-on-delivery-cod-v05-with-fixed-and-percentage-fees/page-7#entry1936755
+ *  and have also applied the changes made by @sergiocues in post https://www.prestashop.com/forums/topic/75458-module-cash-on-delivery-cod-v05-with-fixed-and-percentage-fees/page-7#entry1979224
+ * 
+ * @author  Exadra37 <exadra37ingmailpointcom>
+ * @package Exadra37/cashondelivery
+ * @since   2015/04/14
+ * @link    http://exadra37.com
+ * 
+ */
+
+/**
  * @since 1.5.0
  */
-class CashondeliveryValidationModuleFrontController extends ModuleFrontController{
-public $display_column_left = false;
-public $ssl = true;
+class CashondeliveryValidationModuleFrontController extends ModuleFrontController
+{
+    public $display_column_left = false;
+    
+    public $ssl = true;
 
-public function postProcess(){
-if ($this->context->cart->id_customer == 0 || $this->context->cart->id_address_delivery == 0 || $this->context->cart->id_address_invoice == 0 || !$this->module->active)
-Tools::redirectLink(__PS_BASE_URI__.'order.php?step=1');
 
-// Check that this payment option is still available in case the customer changed his address just before the end of the checkout process
-$authorized = false;
-foreach (Module::getPaymentModules() as $module)
-if ($module['name'] == 'cashondelivery'){
-$authorized = true;
-break;}
-if(!$authorized)
-die(Tools::displayError('This payment method is not available.'));
+    public function postProcess()
+    {
+        if ($this->context->cart->id_customer == 0 || $this->context->cart->id_address_delivery == 0 || $this->context->cart->id_address_invoice == 0 || !$this->module->active) {
 
-$customer = new Customer($this->context->cart->id_customer);
-if (!Validate::isLoadedObject($customer))
-Tools::redirectLink(__PS_BASE_URI__.'order.php?step=1');
+            Tools::redirectLink(__PS_BASE_URI__.'order.php?step=1');
+        }
 
-if (Tools::getValue('confirm')){
-$customer = new Customer((int)$this->context->cart->id_customer);
-$total = $this->context->cart->getOrderTotal(true, Cart::BOTH)+$this->getDobirecne();
-$this->module->validateOrder((int)$this->context->cart->id, Configuration::get('PS_OS_PREPARATION'), $total, $this->module->displayName, null, array(), null, false, $customer->secure_key);
-Tools::redirectLink(__PS_BASE_URI__.'order-confirmation.php?key='.$customer->secure_key.'&id_cart='.(int)$this->context->cart->id.'&id_module='.(int)$this->module->id.'&id_order='.(int)$this->module->currentOrder);}}
-/**
-* @see FrontController::initContent()
-*/
-public function initContent(){
-parent::initContent();
-$dobirecne= $this->getDobirecne();
-$total=$this->context->cart->getOrderTotal(true, Cart::BOTH);
-$this->context->smarty->assign(array(
-'totalbezdobirky' => $total,
-'dobirecne' => $dobirecne,
-'total'=>$total + $dobirecne,
-'this_path' => $this->module->getPathUri(),
-'this_path_ssl' => Tools::getShopDomainSsl(true, true).__PS_BASE_URI__.'modules/'.$this->module->name.'/'));
+        // Check that this payment option is still available in case the customer changed his address just before the end of the checkout process
+        $authorized = false;
 
-$this->setTemplate('validation.tpl');}
+        foreach (Module::getPaymentModules() as $module) {
 
-private function getDobirecne(){
-require 'modules/cashondelivery/recargominimo.php';
-$dobirecne = intval(Configuration::get('COD_FEE'));
-$dobirecne = $this->context->cart->getOrderTotal(true,Cart::BOTH)/100*$dobirecne;
-if($dobirecne>$this->context->cart->getOrderTotal(true,Cart::BOTH)){$dobirecne = intval(Configuration::get('COD_FEE'))/100;}
-if ($dobirecne<$RecargoMinimo){$dobirecne=$RecargoMinimo;}
-$zdarma = intval(Configuration::get('COD_FEEFREE')); 
+            if ($module['name'] == 'cashondelivery') {
 
-if($zdarma > 0 && $this->context->cart->getOrderTotal(true,Cart::BOTH_WITHOUT_SHIPPING) >$zdarma)$dobirecne=0;
-return $dobirecne;}}?>
+                $authorized = true;
+                break;
+            }
+        }
+
+        if(!$authorized) {
+
+            die(Tools::displayError('This payment method is not available.'));
+        }
+
+        $customer = new Customer($this->context->cart->id_customer);
+
+        if (!Validate::isLoadedObject($customer)) {
+
+            Tools::redirectLink(__PS_BASE_URI__.'order.php?step=1');
+        }
+
+        if (Tools::getValue('confirm')) {
+
+            $customer = new Customer((int) $this->context->cart->id_customer);
+
+            $total    = $this->context->cart->getOrderTotal(true, Cart::BOTH) + $this->getDobirecne();
+
+            $this->module->validateOrder((int) $this->context->cart->id, Configuration::get('PS_OS_PREPARATION'), $total, $this->module->displayName, null, array(), null, false, $customer->secure_key);
+            
+            Tools::redirectLink(__PS_BASE_URI__.'order-confirmation.php?key='.$customer->secure_key.'&id_cart='.(int) $this->context->cart->id.'&id_module='.(int) $this->module->id.'&id_order='.(int) $this->module->currentOrder);
+        }
+    }
+
+
+    /**
+    * @see FrontController::initContent()
+    */
+    public function initContent()
+    {
+        parent::initContent();
+
+        $dobirecne = $this->getDobirecne();
+
+        $total     = $this->context->cart->getOrderTotal(true, Cart::BOTH);
+
+        $this->context->smarty->assign(array(
+            'totalbezdobirky' => $total,
+            'dobirecne' => $dobirecne,
+            'total'=>$total + $dobirecne,
+            'this_path' => $this->module->getPathUri(),
+            'this_path_ssl' => Tools::getShopDomainSsl(true, true).__PS_BASE_URI__.'modules/'.$this->module->name.'/'
+        ));
+
+        $this->setTemplate('validation.tpl');
+    }
+
+    private function getDobirecne()
+    {
+        require 'modules/cashondelivery/recargominimo.php';
+    
+        $dobirecne = intval(Configuration::get('COD_FEE'));
+    
+        $dobirecne = $this->context->cart->getOrderTotal(true, Cart::BOTH) / 100 * $dobirecne;
+        
+        if ($dobirecne > $this->context->cart->getOrderTotal(true, Cart::BOTH)) {
+
+            $dobirecne = intval(Configuration::get('COD_FEE')) / 100;
+        }
+        
+        if ($dobirecne < $RecargoMinimo) {
+
+            $dobirecne = $RecargoMinimo;
+        }
+        
+        $zdarma = intval(Configuration::get('COD_FEEFREE'));
+
+        if($zdarma > 0 && $this->context->cart->getOrderTotal(true,Cart::BOTH_WITHOUT_SHIPPING) > $zdarma) {
+
+            $dobirecne = 0;
+        }
+        
+        return $dobirecne;
+    }
+}
