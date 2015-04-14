@@ -1,1 +1,0 @@
-<?php $RecargoMinimo = 3;?>
