@@ -116,25 +116,31 @@ class CashondeliveryValidationModuleFrontController extends ModuleFrontControlle
 
     private function getDobirecne()
     {
-        require 'modules/cashondelivery/recargominimo.php';
-    
-        $dobirecne = intval(Configuration::get('COD_FEE'));
-    
-        $dobirecne = $this->context->cart->getOrderTotal(true, Cart::BOTH) / 100 * $dobirecne;
-        
-        if ($dobirecne > $this->context->cart->getOrderTotal(true, Cart::BOTH)) {
+        $config = Configuration::getMultiple(array(
+            'COD_MINIMAL_FEE',
+            'COD_FEE',
+            'COD_FREE_FROM'
+        ));
 
-            $dobirecne = intval(Configuration::get('COD_FEE')) / 100;
+        $cod_fee = intval($config['COD_FEE']);
+        
+        $order_total = $this->context->cart->getOrderTotal(true, Cart::BOTH);
+
+        $dobirecne = $order_total / 100 * $cod_fee;
+        
+        if ($dobirecne > $order_total) {
+
+            $dobirecne = $cod_fee / 100;
         }
         
-        if ($dobirecne < $RecargoMinimo) {
+        if ($dobirecne < $config['COD_MINIMAL_FEE']) {
 
-            $dobirecne = $RecargoMinimo;
+            $dobirecne = $config['COD_MINIMAL_FEE'];
         }
         
-        $zdarma = intval(Configuration::get('COD_FEEFREE'));
+        $cod_free_from = intval($config['COD_FREE_FROM']);
 
-        if($zdarma > 0 && $this->context->cart->getOrderTotal(true,Cart::BOTH_WITHOUT_SHIPPING) > $zdarma) {
+        if($cod_free_from > 0 && $this->context->cart->getOrderTotal(true, Cart::BOTH_WITHOUT_SHIPPING) > $cod_free_from) {
 
             $dobirecne = 0;
         }
