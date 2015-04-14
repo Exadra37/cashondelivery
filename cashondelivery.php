@@ -52,14 +52,24 @@ if (!defined('_PS_VERSION_')) {
 
 class CashOnDelivery extends PaymentModule
 {
-    private $fee;
-
-    private $feefree;
-
-    private $_postErrors = array();
-
-    protected $allowed_carriers;
+    private $__postErrors    = array();
     
+    private $__postValues    = array();
+    
+    private $__validCarriers = array();
+
+    private $__isSubmmitted  = false;
+
+
+    protected $_fee             = 0;
+    
+    protected $_freeFrom        = '0.00';
+    
+    protected $_minimalFee      = '0.00';
+    
+    protected $_allowedCarriers = array();
+    
+
     public function __construct()
     {
         $this->name          = 'cashondelivery';
@@ -71,16 +81,18 @@ class CashOnDelivery extends PaymentModule
         
         $config = Configuration::getMultiple(array(
             'COD_CARRIERS',
+            'COD_MINIMAL_FEE',
             'COD_FEE',
-            'COD_FEEFREE'
+            'COD_FREE_FROM'
         ));
 
-        $this->fee     = $config['COD_FEE'];
-        $this->feefree = $config['COD_FEEFREE'];
+        $this->_fee        = $config['COD_FEE'];
+        $this->_freeFrom   = $config['COD_FREE_FROM'];
+        $this->_minimalFee = $config['COD_MINIMAL_FEE'];
         
         if (!empty($config['COD_CARRIERS'])) {
 
-            $this->allowed_carriers = unserialize($config['COD_CARRIERS']);
+            $this->_allowedCarriers = unserialize($config['COD_CARRIERS']);
         }
         
         parent::__construct();
@@ -94,35 +106,33 @@ class CashOnDelivery extends PaymentModule
         return parent::install() && 
                $this->registerHook('payment') && 
                $this->registerHook('paymentReturn') &&
-               Configuration::updateValue('COD_FEE', 0) &&
-               Configuration::updateValue('COD_FEEFREE', 0) &&
+               Configuration::updateValue('COD_FEE', '700') &&
+               Configuration::updateValue('COD_FREE_FROM', '100.00') &&
+               Configuration::updateValue('COD_MINIMAL_FEE', '3.00') &&
                Configuration::updateValue('COD_ORDER_CARRIERS', '');
     }
 
     public function uninstall()
     {
-        return Configuration::deleteByName('COD_FEE') && Configuration::deleteByName('COD_FEEFREE') && Configuration::deleteByName('COD_CARRIERS') && parent::uninstall();
+        return parent::uninstall() &&
+               Configuration::deleteByName('COD_FEE') && 
+               Configuration::deleteByName('COD_FREE_FROM') && 
+               Configuration::deleteByName('COD_MINIMAL_FEE') && 
+               Configuration::deleteByName('COD_CARRIERS');
+
     }
     
     public function getContent()
     {
+        $this->__isFormSubmmitted = Tools::isSubmit('btnSubmit');
+
         $this->_html = '<h2>' . $this->displayName . '</h2>';
         
-        if (!empty($_POST)) {
+        if ($this->__isFormSubmmitted) {
 
-            $this->_postValidation();
-            
-            if (!sizeof($this->_postErrors)) {
-
-                $this->_postProcess();
-
-            } else {
-
-                foreach ($this->_postErrors as $err) {
-
-                    $this->_html.= '<div class="alert error">' . $err . '</div>';
-                }
-            }
+            $this->_postValidation()
+                 ->_postProcess()
+                 ->_processErrors();
 
         } else {
 
@@ -168,7 +178,7 @@ class CashOnDelivery extends PaymentModule
             'this_path_ssl' => Tools::getShopDomainSsl(true, true) . __PS_BASE_URI__ . 'modules/' . $this->name . '/'
         ));
         
-        if ($this->feefree > 0 && $amountPaid > $this->feefree) {
+        if ($this->_freeFrom > 0 && $amountPaid > $this->_freeFrom) {
 
             // TODO: assign using context
             $smarty->assign(array(
@@ -179,7 +189,7 @@ class CashOnDelivery extends PaymentModule
 
             // TODO: assign using context
             $smarty->assign(array(
-                'dobirecne' => $this->l('The fee is ') . Tools::displayPrice(Tools::convertPrice($this->fee))
+                'dobirecne' => $this->l('The fee is ') . Tools::displayPrice(Tools::convertPrice($this->_fee))
             ));
         }
 
@@ -199,7 +209,7 @@ class CashOnDelivery extends PaymentModule
     public function hookUpdateCarrier($params)
     {
         $this->_renumberCarriers($params);
-        Configuration::updateValue('COD_CARRIERS', serialize($this->allowed_carriers));
+        Configuration::updateValue('COD_CARRIERS', serialize($this->_allowedCarriers));
     }
     
     /**
@@ -361,28 +371,25 @@ class CashOnDelivery extends PaymentModule
                     ////////////////// CÁLCULO DEL RECARGO /////////////////////
                     //////////////////////////////////////////////////////////*/
                     
-                    // TODO: the include of this file is useless, once the only thing it does is to assign a value to a var $RecargoMinimo = 3;
-                    //       get this value from configuration and make it configurable from BO
-                    require 'recargominimo.php';
                     
-                    if ($this->feefree > 0 && $amount_paid > $this->feefree) {
+                    if ($this->_freeFrom > 0 && $amount_paid > $this->_freeFrom) {
 
                         $fee = 0;
 
                     } else {
 
-                        $fee = Tools::convertPrice($this->fee, $order->id_currency);
+                        $fee = Tools::convertPrice($this->_fee, $order->id_currency);
                         $fee = $cart_total_paid / 100 * $fee;
                     }
                     
                     if ($fee > $cart_total_paid) {
 
-                        $fee = Tools::convertPrice($this->fee, $order->id_currency) / 100;
+                        $fee = Tools::convertPrice($this->_fee, $order->id_currency) / 100;
                     }
                     
-                    if ($fee < $RecargoMinimo) {
+                    if ($fee < $this->_minimalFee) {
 
-                        $fee = $RecargoMinimo;
+                        $fee = $this->_minimalFee;
                     }
                     
                     /*//////////////////////////////////////////////////////////
@@ -901,59 +908,95 @@ class CashOnDelivery extends PaymentModule
     
     private function _postValidation()
     {
-        if (Tools::isSubmit('btnSubmit')) {
+        if ($this->__isFormSubmmitted) {
+
+            $this->_fee        = $this->__postValues['COD_FEE']         = $this->__getPostValue('COD_FEE');
+            $this->_freeFrom   = $this->__postValues['COD_FREE_FROM']   = $this->__getPostValue('COD_FREE_FROM');
+            $this->_minimalFee = $this->__postValues['COD_MINIMAL_FEE'] = $this->__getPostValue('COD_MINIMAL_FEE');
             
-            if (intval(Tools::getValue('COD_FEE')) < 0) {
+            $this->__postValues['COD_CARRIERS'] = (false !== ($carriers = $this->__getPostValue('carrier'))) ? $carriers : array();
 
-                return false;
-            }
-            
-            if (intval(Tools::getValue('COD_FEEFREE')) <= 0) {
-
-                $_POST['COD_FEEFREE'] = 0;
+            if (empty($this->__postValues['COD_MINIMAL_FEE']) || !$this->__assignIfIsNumericValue($this->__postValues['COD_MINIMAL_FEE'], 'COD_MINIMAL_FEE')) {
+                
+                $this->__postErrors[] = $this->l("The value provide is not correct for field: Minimal Fee");
             }
 
-            return true;
+            if (empty($this->__postValues['COD_FEE']) || !$this->__assignIfIsNumericValue($this->__postValues['COD_FEE'], 'COD_FEE')) {
+                
+                $this->__postErrors[] = $this->l("The value provide is not correct for field: Fee");
+            }
+
+            if (empty($this->__postValues['COD_FREE_FROM']) || !$this->__assignIfIsNumericValue($this->__postValues['COD_FREE_FROM'], 'COD_FREE_FROM')) {
+                
+                $this->__postErrors[] = $this->l("The value provide is not correct for field: Free From");
+            }
+
+            if (!$this->__assignIfIsValidCarrier($this->__postValues['COD_CARRIERS'], 'COD_CARRIERS')) {
+                
+                $this->__postErrors[] = $this->l("The value provide is not correct for field: carriers");
+            }
+
+            $this->__isFormSubmmitted = true;
         }
+
+        return $this;
+    }
+
+    private function __assignIfIsNumericValue($value, $form_key)
+    {
+        $success = false;
+
+        if (is_numeric($value)) {
+            
+            $this->__processValues[$form_key] = number_format($value, 2, '.', '');
+            
+            $success                          = true;
+        }
+
+        return $success;
+    }
+
+    private function __assignIfIsValidCarrier(array $carriers)
+    {
+        $success = true;
+
+        foreach ($carriers as $carrier_id => $carrier) {
+
+            if (!is_numeric($carrier_id)) {
+                
+                $success = false;
+
+                break;
+            }
+
+            $this->__validCarriers[] = (int) $carrier_id;
+        }
+        
+        return false !== $success && count($carriers) == count($this->__validCarriers);
+    }
+
+    private function __getPostValue($form_key)
+    {
+        return Tools::getValue($form_key);
     }
     
     private function _displayForm()
     {
-        /*///////////////////////////////////////////////////////////////////////////////
-        ///////////////////// CREACIÓN DEL ARCHIVO RECARGOMINIMO.PHP ////////////////////
-        ///////////////////////////////////////////////////////////////////////////////*/
-        $archivo = "../modules/cashondelivery/recargominimo.php";
-
-        $valor = str_replace(array(",", "'"), ".", (float) Tools::getValue('minimo', 0));
-        
-        /*///// ARCHIVO A CREAR /////*/
-        // TODO: use instead ps_configuration to store this value
-        $contenido = '<?php $RecargoMinimo = ' . $valor . ';?>';
-        
-        // TODO: this will be temporary... just until i resolve issue #6
-        file_put_contents($archivo, $contenido);
-        
-        /*///////////////////////////////////////////////////////////////////////////////
-        ///////////////////// CREACIÓN DEL ARCHIVO RECARGOMINIMO.PHP ////////////////////
-        ///////////////////////////////////////////////////////////////////////////////*/
-        // TODO: retrieve the value from 
-        require 'recargominimo.php';
-
         // TODO: Use form Helper to build this form
         $currency     = Currency::getCurrencyInstance(Configuration::get('PS_CURRENCY_DEFAULT'));
         $this->_html .= '<form action="' . $_SERVER['REQUEST_URI'] . '" method="post">';
-        $this->_html .= '<table><tr><td style="width:120px">' . $this->l('Minimum Surcharge') . ':</td>;';
-        $this->_html .= '<td style="width:111px"><input type="text" name="minimo" style="text-align:center;width:60px;padding:0;border:2px inset" value="' . $RecargoMinimo . '"> <b>' . $currency->sign . '</b></td>';
+        $this->_html .= '<table><tr><td style="width:120px">' . $this->l('Minimal Fee') . ':</td>;';
+        $this->_html .= '<td style="width:111px"><input type="text" name="COD_MINIMAL_FEE" style="text-align:center;width:60px;padding:0;border:2px inset" value="' . Tools::convertPrice($this->_minimalFee) . '"> <b>' . $currency->sign . '</b></td>';
         $this->_html .= '<td style="border:solid 1px #ccc;padding:0 4px;background:white;color:green;font-weight:bold">';
         $this->_html .= $this->l('You can insert a minimum, if the charge does not exceed this amount in any case apply the minimum. For value = 0, insert value = 0.0') . '</td></tr><tr><td style="width:120px">';
-        $this->_html .= $this->l('Recargo') . ':</td><td style="width:111px"><input  name="COD_FEE" value="' . Tools::convertPrice($this->fee) . '" style="text-align:center;width:60px"/> <b>' . $currency->sign . '</b> ';
+        $this->_html .= $this->l('Fee') . ':</td><td style="width:111px"><input  name="COD_FEE" value="' . Tools::convertPrice($this->_fee) . '" style="text-align:center;width:60px"/> <b>' . $currency->sign . '</b> ';
         $this->_html .= $this->l('or') . ' <b>%</b></td><td style="border:solid 1px #ccc;padding:1px 4px;background:white;color:green;font-weight:bold">';
         $this->_html .= $this->l('To assign a percentage value entered is less than (100), for example if you want to assign a surcharge (2 percent) will have to insert the value (2).') . '<br/>';
         $this->_html .= $this->l('To assign a value fixed mark inserted above (100), for example if you want to assign a surcharge (2 € or $) you have to insert the value (200).') . '</td><tr><td>';
-        $this->_html .= $this->l('Free from') . ':</td><td><input  name="COD_FEEFREE" value="' . Tools::convertPrice($this->feefree) . '" style="text-align:center;width:60px"/> <b>' . $currency->sign . '</b></td>';
+        $this->_html .= $this->l('Free from') . ':</td><td><input  name="COD_FREE_FROM" value="' . Tools::convertPrice($this->_freeFrom) . '" style="text-align:center;width:60px"/> <b>' . $currency->sign . '</b></td>';
         $this->_html .= '<td style="border:solid 1px #ccc;padding:0 4px;background:white;color:green;font-weight:bold">' . $this->l('Indicates the minimum price at which the COD payment charge will be free.') . '</td></tr></table>';
         $this->_html .= '<br /><br />' . $this->l('Carriers, leave blank for all or marking that if they apply the surcharge.') . '<br/><br/>';
-        $this->_html .= $this->fetchCarriers($this->allowed_carriers) . '<br/><input class="button" name="btnSubmit" value="' . $this->l('Save') . '" type="submit"/></fieldset>';
+        $this->_html .= $this->fetchCarriers($this->_allowedCarriers) . '<br/><input class="button" name="btnSubmit" value="' . $this->l('Save') . '" type="submit"/></fieldset>';
         $this->_html .= '<span style="font-weight:bold;float:right;margin-top:-15px;color:#444"><ul><li>Created by <a target="_blank" href="http://www.prestashop.com/" style="color:green;font-weight:bold">PrestaShop</a>';
         $this->_html .= ', modified by <a href="http://prestahost.eu/" target="_blank" style="color:green;font-weight:bold">PrestaHost</a>';
         $this->_html .= ' and latest changes by <a target="_blank" href="http://www.takeonme.es/" style="color:green;font-weight:bold">TakeonMe</a>';
@@ -966,33 +1009,47 @@ class CashOnDelivery extends PaymentModule
     
     private function _postProcess()
     {
-        if (Tools::isSubmit('btnSubmit')) {
+        if ($this->__isFormSubmmitted && empty($this->__postErrors)) {
             
-            Configuration::updateValue('COD_FEE', intval(Tools::getValue('COD_FEE')));
+            foreach ($this->__processValues as $key => $value) {
+                
+                Configuration::updateValue($key, $value);
+            }
 
-            $this->fee = intval(Tools::getValue('COD_FEE'));
+            if (!empty($this->__validCarriers)) {
 
-            Configuration::updateValue('COD_FEEFREE', intval(Tools::getValue('COD_FEEFREE')));
+                $this->_allowedCarriers = $this->__validCarriers;
 
-            $this->feefree = intval(Tools::getValue('COD_FEEFREE'));
-            
-            $carrier = Tools::getValue('carrier');
-            
-            if (!empty($carrier) && is_array($carrier)) {
-
-                $this->allowed_carriers = array_keys($carrier);
-
-                Configuration::updateValue('COD_CARRIERS', serialize($this->allowed_carriers));
+                Configuration::updateValue('COD_CARRIERS', serialize($this->__validCarriers));
 
             } else {
 
-                $this->allowed_carriers = array();
+                $this->_allowedCarriers = array();
 
                 Configuration::updateValue('COD_CARRIERS', null);
             }
             
-            $this->_html .= '<div class="conf confirm"><img src="../img/admin/ok.gif" alt="' . $this->l('OK') . '" />' . $this->l('Changes Saved') . '</div>';
+            $this->_html .=  $this->displayConfirmation($this->l("Saved Successfully"));
         }
+
+        return $this;
+    }
+
+    private function _processErrors()
+    {
+        $html = '';
+
+        if (!empty($this->__postErrors)) {
+            
+            foreach ($this->__postErrors as $error) {
+                
+                $html .= $this->displayError($error);
+            }
+        }
+
+        $this->_html = "{$html}{$this->_html}";
+
+        return $this;
     }
     
     private function _displayCod()
@@ -1006,7 +1063,7 @@ class CashOnDelivery extends PaymentModule
     // TODO: optimize this function to have the logic in 1 line
     protected function isAllowedCarrier($id_carrier)
     {
-        return is_array($this->allowed_carriers) && in_array($id_carrier, $this->allowed_carriers);
+        return is_array($this->_allowedCarriers) && in_array($id_carrier, $this->_allowedCarriers);
     }
     
     protected function fetchCarriers($selected)
@@ -1033,16 +1090,16 @@ class CashOnDelivery extends PaymentModule
     
     protected function _renumberCarriers($params)
     {
-        if ($params['carrier']->id && ($params['carrier']->id != $params['id_carrier']) && is_array($this->allowed_carriers)) {
+        if ($params['carrier']->id && ($params['carrier']->id != $params['id_carrier']) && is_array($this->_allowedCarriers)) {
 
             $carriers = array();
             
-            foreach ($this->allowed_carriers as $carrier) {
+            foreach ($this->_allowedCarriers as $carrier) {
 
                 $carriers[] = ($carrier == $params['id_carrier']) ? $params['carrier']->id : $carrier;
             }
 
-            $this->allowed_carriers = $carriers;
+            $this->_allowedCarriers = $carriers;
         }
     }
 }
