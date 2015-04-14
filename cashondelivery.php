@@ -74,7 +74,7 @@ class CashOnDelivery extends PaymentModule
     {
         $this->name          = 'cashondelivery';
         $this->tab           = 'payments_gateways';
-        $this->version       = '1.3';
+        $this->version       = '1.1.0.0';
         $this->author        = 'Community';
         $this->need_instance = 1;
         $this->currencies    = false;
