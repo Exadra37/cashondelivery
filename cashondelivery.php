@@ -372,27 +372,8 @@ class CashOnDelivery extends PaymentModule
                     ////////////////// CÁLCULO DEL RECARGO /////////////////////
                     //////////////////////////////////////////////////////////*/
                     
-                    
-                    if ($this->_freeFrom > 0 && $amount_paid > $this->_freeFrom) {
+                    $fee = $this->getFeeToPay();
 
-                        $fee = 0;
-
-                    } else {
-
-                        $fee = Tools::convertPrice($this->_fee, $order->id_currency);
-                        $fee = $cart_total_paid / 100 * $fee;
-                    }
-                    
-                    if ($fee > $cart_total_paid) {
-
-                        $fee = Tools::convertPrice($this->_fee, $order->id_currency) / 100;
-                    }
-                    
-                    if ($fee < $this->_minimalFee) {
-
-                        $fee = $this->_minimalFee;
-                    }
-                    
                     /*//////////////////////////////////////////////////////////
                     ///////////////// FIN CÁLCULO DEL RECARGO //////////////////
                     //////////////////////////////////////////////////////////*/
@@ -1096,5 +1077,33 @@ class CashOnDelivery extends PaymentModule
 
             $this->_allowedCarriers = $carriers;
         }
+    }
+
+    public function getFeeToPay()
+    {
+        $cod_fee     = intval($this->_fee);
+        
+        $order_total = $this->context->cart->getOrderTotal(true, Cart::BOTH);
+        
+        $fee_to_pay  = $order_total / 100 * $cod_fee;
+        
+        if ($fee_to_pay > $order_total) {
+
+            $fee_to_pay = $cod_fee / 100;
+        }
+        
+        if ($fee_to_pay < $this->_minimalFee) {
+
+            $fee_to_pay = $this->_minimalFee;
+        }
+        
+        $cod_free_from = intval($this->_freeFrom);
+
+        if($cod_free_from > 0 && $this->context->cart->getOrderTotal(true, Cart::BOTH_WITHOUT_SHIPPING) > $cod_free_from) {
+
+            $fee_to_pay = 0;
+        }
+        
+        return $fee_to_pay;
     }
 }

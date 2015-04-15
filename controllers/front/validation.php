@@ -83,7 +83,7 @@ class CashondeliveryValidationModuleFrontController extends ModuleFrontControlle
 
             $customer = new Customer((int) $this->context->cart->id_customer);
 
-            $total    = $this->context->cart->getOrderTotal(true, Cart::BOTH) + $this->getDobirecne();
+            $total    = $this->context->cart->getOrderTotal(true, Cart::BOTH) + $this->module->getFeeToPay();
 
             $this->module->validateOrder((int) $this->context->cart->id, Configuration::get('PS_OS_PREPARATION'), $total, $this->module->displayName, null, array(), null, false, $customer->secure_key);
             
@@ -99,7 +99,7 @@ class CashondeliveryValidationModuleFrontController extends ModuleFrontControlle
     {
         parent::initContent();
 
-        $dobirecne = $this->getDobirecne();
+        $dobirecne = $this->module->getFeeToPay();
 
         $total     = $this->context->cart->getOrderTotal(true, Cart::BOTH);
 
@@ -114,37 +114,5 @@ class CashondeliveryValidationModuleFrontController extends ModuleFrontControlle
         $this->setTemplate('validation.tpl');
     }
 
-    private function getDobirecne()
-    {
-        $config = Configuration::getMultiple(array(
-            'COD_MINIMAL_FEE',
-            'COD_FEE',
-            'COD_FREE_FROM'
-        ));
-
-        $cod_fee = intval($config['COD_FEE']);
-        
-        $order_total = $this->context->cart->getOrderTotal(true, Cart::BOTH);
-
-        $dobirecne = $order_total / 100 * $cod_fee;
-        
-        if ($dobirecne > $order_total) {
-
-            $dobirecne = $cod_fee / 100;
-        }
-        
-        if ($dobirecne < $config['COD_MINIMAL_FEE']) {
-
-            $dobirecne = $config['COD_MINIMAL_FEE'];
-        }
-        
-        $cod_free_from = intval($config['COD_FREE_FROM']);
-
-        if($cod_free_from > 0 && $this->context->cart->getOrderTotal(true, Cart::BOTH_WITHOUT_SHIPPING) > $cod_free_from) {
-
-            $dobirecne = 0;
-        }
-        
-        return $dobirecne;
-    }
+    
 }
